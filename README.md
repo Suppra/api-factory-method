@@ -99,11 +99,6 @@ py -m pytest --maxfail=1 --disable-warnings -v test_api.py
    ```
    Allí puedes probar el endpoint `/provision_vm` usando la documentación interactiva de Swagger.
 
-## Referencias
-- Gamma et al. "Design Patterns"
-- Documentación oficial de FastAPI
-- Material de clase UML y SOLID
-
 # Documentación académica de cada parte del código
 
 ## api.py
