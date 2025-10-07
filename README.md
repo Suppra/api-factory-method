@@ -1,7 +1,19 @@
 # API de Aprovisionamiento de Máquinas Virtuales Multi-Cloud
 
 ## Descripción
-Esta API implementa el patrón de diseño Factory Method para aprovisionar máquinas virtuales en diferentes proveedores de nube (AWS, Azure, Google Cloud, On-Premise) de forma extensible, segura y mantenible.
+Esta API implementa los patrones de diseño **Factory Method** y **Abstract Factory** para aprovisionar máquinas virtuales individuales y familias completas de recursos (VM + Red + Disco) en diferentes proveedores de nube (AWS, Azure, Google Cloud, On-Premise) de forma extensible, segura y mantenible.
+
+## Patrones Implementados
+
+### 1. Factory Method (Implementación Original)
+- Aprovisiona VMs individuales
+- Un proveedor por VM
+- Endpoint: `/provision_vm`
+
+### 2. Abstract Factory (Nueva Implementación)
+- Aprovisiona familias de recursos relacionados (VM + Red + Disco)
+- Consistencia garantizada: todos los recursos del mismo proveedor
+- Endpoint: `/provision_resource_family`
 
 ## Objetivos
 - Aplicar principios SOLID y el patrón Factory Method.
@@ -10,12 +22,25 @@ Esta API implementa el patrón de diseño Factory Method para aprovisionar máqu
 - Proveer una API REST stateless y compatible con JSON.
 
 ## Estructura del Proyecto
-- `api.py`: Controlador central de la API REST.
-- `factory.py`: Fábrica de proveedores (Factory Method).
+
+### Archivos Principales
+- `api.py`: Controlador central de la API REST con ambos endpoints.
+- `factory.py`: Fábrica de proveedores (Factory Method original).
+- `abstract_factory.py`: Implementación del patrón Abstract Factory.
+- `resources.py`: Definición de recursos (Network, Storage, VM) y sus implementaciones.
+- `resource_provisioner.py`: Servicio de aprovisionamiento de familias de recursos.
 - `models.py`: Modelos de datos para solicitudes y respuestas.
 - `logger.py`: Registro seguro de logs.
-- `providers/`: Implementaciones de cada proveedor (AWS, Azure, GCP, OnPremise).
-- `test_api.py`: Pruebas automáticas de la API.
+
+### Proveedores
+- `providers/`: Implementaciones originales de cada proveedor (AWS, Azure, GCP, OnPremise).
+
+### Pruebas
+- `test_api.py`: Pruebas del Factory Method original.
+- `test_resource_families.py`: Pruebas del Abstract Factory.
+
+### Documentación
+- `ABSTRACT_FACTORY_DOCS.md`: Documentación académica detallada del patrón Abstract Factory.
 
 ## Diagrama de Clases (UML)
 
@@ -34,11 +59,12 @@ classDiagram
     API --> Logger
 ```
 
-## Ejemplo de Uso
+## Ejemplos de Uso
 
-### Solicitud de aprovisionamiento (POST)
+### 1. Factory Method - VM Individual
 
-```
+#### Solicitud de aprovisionamiento (POST)
+```json
 POST /provision_vm
 Content-Type: application/json
 {
@@ -52,8 +78,8 @@ Content-Type: application/json
 }
 ```
 
-### Respuesta exitosa
-```
+#### Respuesta exitosa
+```json
 {
   "success": true,
   "vm_id": "aws-vm-123",
@@ -61,12 +87,74 @@ Content-Type: application/json
 }
 ```
 
-### Respuesta de error
-```
+### 2. Abstract Factory - Familia de Recursos
+
+#### Solicitud de aprovisionamiento (POST)
+```json
+POST /provision_resource_family
+Content-Type: application/json
 {
-  "success": false,
-  "vm_id": null,
-  "error": "Falta parámetro AWS: ami"
+  "provider": "aws",
+  "vm_params": {
+    "instance_type": "t2.micro",
+    "region": "us-east-1",
+    "ami": "ami-123456"
+  },
+  "network_params": {
+    "vpcId": "vpc-abc123",
+    "subnet": "subnet-def456",
+    "securityGroup": "sg-ghi789"
+  },
+  "storage_params": {
+    "volumeType": "gp2",
+    "sizeGB": 20,
+    "encrypted": true
+  }
+}
+```
+
+#### Respuesta exitosa
+```json
+{
+  "success": true,
+  "provider": "AWS",
+  "resources": [
+    {
+      "resource_id": "aws-net-123",
+      "resource_type": "network", 
+      "status": "disponible",
+      "details": {
+        "vpc_id": "vpc-abc123",
+        "subnet": "subnet-def456",
+        "security_group": "sg-ghi789",
+        "status": "disponible"
+      }
+    },
+    {
+      "resource_id": "aws-vol-456",
+      "resource_type": "storage",
+      "status": "disponible", 
+      "details": {
+        "volume_type": "gp2",
+        "size_gb": 20,
+        "encrypted": true,
+        "status": "disponible"
+      }
+    },
+    {
+      "resource_id": "aws-vm-789",
+      "resource_type": "vm",
+      "status": "aprovisionada",
+      "details": {
+        "instance_type": "t2.micro",
+        "region": "us-east-1",
+        "ami": "ami-123456",
+        "network_id": "aws-net-123",
+        "storage_id": "aws-vol-456",
+        "status": "aprovisionada"
+      }
+    }
+  ]
 }
 ```
 
@@ -79,25 +167,47 @@ VMFactory.register_provider("oracle", OracleProvider)
 ```
 
 ## Pruebas automáticas
-Ejecuta los tests con:
+
+### Factory Method Original
+```bash
+py -m pytest test_api.py -v
 ```
-py -m pytest --maxfail=1 --disable-warnings -v test_api.py
+
+### Abstract Factory (Familias de Recursos)
+```bash
+py -m pytest test_resource_families.py -v
+```
+
+### Todas las pruebas
+```bash
+py -m pytest -v
 ```
 
 ## Cómo probar el API manualmente
-1. Instala las dependencias:
-   ```
+
+1. **Instala las dependencias:**
+   ```bash
    py -m pip install fastapi uvicorn
    ```
-2. Ejecuta el servidor:
-   ```
+
+2. **Ejecuta el servidor:**
+   ```bash
    py -m uvicorn api:app --reload
    ```
-3. Abre tu navegador en:
+
+3. **Abre la documentación interactiva:**
    ```
    http://127.0.0.1:8000/docs
    ```
-   Allí puedes probar el endpoint `/provision_vm` usando la documentación interactiva de Swagger.
+
+4. **Endpoints disponibles:**
+   - `/provision_vm`: Factory Method - VM individual
+   - `/provision_resource_family`: Abstract Factory - Familia de recursos
+   - `/supported_providers`: Lista de proveedores soportados
+
+5. **Prueba con ejemplos:**
+   - Usa los ejemplos JSON mostrados arriba
+   - La documentación Swagger permite probar directamente desde el navegador
 
 ## Referencias
 - Gamma et al. "Design Patterns"
