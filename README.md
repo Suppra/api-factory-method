@@ -209,11 +209,6 @@ py -m pytest -v
    - Usa los ejemplos JSON mostrados arriba
    - La documentación Swagger permite probar directamente desde el navegador
 
-## Referencias
-- Gamma et al. "Design Patterns"
-- Documentación oficial de FastAPI
-- Material de clase UML y SOLID
-
 # Documentación académica de cada parte del código
 
 ## api.py
