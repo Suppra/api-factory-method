@@ -21,23 +21,35 @@ Esta API implementa los patrones de diseño **Factory Method**, **Abstract Facto
 - Builder permite personalización paso a paso
 - Endpoints: `/build_vm`, `/vm_configurations/{provider}`, `/validate_vm_config`
 
+### 4. Prototype (Implementación Experta)
+- Crea VMs mediante clonación de templates predefinidos
+- Permite personalización y adaptación entre proveedores
+- Templates especializados por industria (web, database, analytics)
+- Endpoints: `/create_from_template`, `/vm_templates`, `/register_template`
+
 ## Objetivos
-- Aplicar principios SOLID y patrones creacionales (Factory Method, Abstract Factory, Builder).
+- Aplicar principios SOLID y patrones creacionales (Factory Method, Abstract Factory, Builder, Prototype).
 - Demostrar la combinación efectiva de múltiples patrones de diseño.
 - Permitir la integración de nuevos proveedores sin modificar el controlador central.
 - Proporcionar diferentes niveles de abstracción según las necesidades del usuario.
+- Implementar reutilización de configuraciones mediante templates clonables.
 - Registrar logs sin exponer información sensible.
 - Proveer una API REST stateless y compatible con JSON.
 
 ## Estructura del Proyecto
 
 ### Archivos Principales
-- `api.py`: Controlador central de la API REST con ambos endpoints.
+- `api.py`: Controlador central de la API REST con todos los endpoints.
 - `factory.py`: Fábrica de proveedores (Factory Method original).
 - `abstract_factory.py`: Implementación del patrón Abstract Factory.
+- `vm_prototype.py`: Implementación del patrón Prototype con registry de templates.
+- `vm_prototype_service.py`: Servicio de gestión de prototipos y templates.
+- `vm_builder.py` + `vm_director.py`: Implementación Builder + Director.
+- `vm_construction_service.py`: Orquestador principal de todos los patrones.
 - `resources.py`: Definición de recursos (Network, Storage, VM) y sus implementaciones.
 - `resource_provisioner.py`: Servicio de aprovisionamiento de familias de recursos.
-- `models.py`: Modelos de datos para solicitudes y respuestas.
+- `models.py` + `models_extended.py`: Modelos de datos para solicitudes y respuestas.
+- `prototype_models.py`: Modelos específicos para el patrón Prototype.
 - `logger.py`: Registro seguro de logs.
 
 ### Proveedores
@@ -166,6 +178,89 @@ Content-Type: application/json
 }
 ```
 
+### 3. Builder + Director - VM con Tipos Predefinidos
+
+#### Solicitud de construcción (POST)
+```json
+POST /build_vm
+Content-Type: application/json
+{
+  "vm_type": "memory_optimized",
+  "provider": "azure",
+  "region": "eastus",
+  "custom_vm_config": {
+    "vcpus": 8,
+    "memory_gb": 32
+  }
+}
+```
+
+### 4. Prototype - VM desde Template
+
+#### Listar templates disponibles (GET)
+```http
+GET /vm_templates
+```
+
+#### Crear VM desde template (POST)
+```json
+POST /create_from_template
+Content-Type: application/json
+{
+  "template_name": "web-server-standard",
+  "provider": "azure",
+  "region": "eastus",
+  "vm_customizations": {
+    "vcpus": 4,
+    "memory_gb": 8,
+    "instance_type": "Standard_B4ms"
+  },
+  "network_customizations": {
+    "firewall_rules": ["HTTP", "HTTPS", "SSH"],
+    "public_ip": true
+  },
+  "storage_customizations": {
+    "size_gb": 100,
+    "storage_type": "Premium_SSD"
+  }
+}
+```
+
+#### Registrar nuevo template (POST)
+```json
+POST /register_template
+Content-Type: application/json
+{
+  "template_name": "custom-analytics-template",
+  "description": "Template personalizado para análisis de datos",
+  "category": "analytics",
+  "vm_specification": {
+    "vm_type": "compute_optimized",
+    "provider": "gcp",
+    "region": "us-central1",
+    "vm_config": {
+      "provider": "gcp",
+      "vcpus": 16,
+      "memory_gb": 32,
+      "disk_optimization": true,
+      "machine_type": "c2-standard-16"
+    },
+    "network_config": {
+      "provider": "gcp",
+      "region": "us-central1",
+      "firewall_rules": ["SSH", "Custom-8080"],
+      "public_ip": true
+    },
+    "storage_config": {
+      "provider": "gcp",
+      "region": "us-central1",
+      "size_gb": 500,
+      "storage_type": "pd-ssd"
+    }
+  }
+}
+```
+
 ## Extensión para nuevos proveedores
 Para agregar un nuevo proveedor, crea una clase en `providers/` y regístrala en la fábrica:
 ```python
@@ -184,6 +279,16 @@ py -m pytest test_api.py -v
 ### Abstract Factory (Familias de Recursos)
 ```bash
 py -m pytest test_resource_families.py -v
+```
+
+### Builder + Director Pattern
+```bash
+py -m pytest test_builder_pattern.py -v
+```
+
+### Prototype Pattern
+```bash
+py -m pytest test_prototype_pattern.py -v
 ```
 
 ### Todas las pruebas
@@ -211,6 +316,10 @@ py -m pytest -v
 4. **Endpoints disponibles:**
    - `/provision_vm`: Factory Method - VM individual
    - `/provision_resource_family`: Abstract Factory - Familia de recursos
+   - `/build_vm`: Builder + Director - VM con tipos predefinidos
+   - `/create_from_template`: Prototype - VM desde template clonado
+   - `/vm_templates`: Prototype - Lista de templates disponibles
+   - `/register_template`: Prototype - Registrar nuevo template
    - `/supported_providers`: Lista de proveedores soportados
 
 5. **Prueba con ejemplos:**
