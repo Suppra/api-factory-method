@@ -1,7 +1,7 @@
 # API de Aprovisionamiento de Máquinas Virtuales Multi-Cloud
 
 ## Descripción
-Esta API implementa los patrones de diseño **Factory Method** y **Abstract Factory** para aprovisionar máquinas virtuales individuales y familias completas de recursos (VM + Red + Disco) en diferentes proveedores de nube (AWS, Azure, Google Cloud, On-Premise) de forma extensible, segura y mantenible.
+Esta API implementa los patrones de diseño **Factory Method**, **Abstract Factory** y **Builder con Director** para aprovisionar recursos en diferentes proveedores de nube (AWS, Azure, Google Cloud, On-Premise) de forma extensible, segura y mantenible.
 
 ## Patrones Implementados
 
@@ -10,14 +10,22 @@ Esta API implementa los patrones de diseño **Factory Method** y **Abstract Fact
 - Un proveedor por VM
 - Endpoint: `/provision_vm`
 
-### 2. Abstract Factory (Nueva Implementación)
+### 2. Abstract Factory (Implementación Intermedia)
 - Aprovisiona familias de recursos relacionados (VM + Red + Disco)
 - Consistencia garantizada: todos los recursos del mismo proveedor
 - Endpoint: `/provision_resource_family`
 
+### 3. Builder + Director (Implementación Avanzada)
+- Construye VMs con tipos predefinidos (Standard, Memory-Optimized, Compute-Optimized)
+- Director define configuraciones automáticas por proveedor
+- Builder permite personalización paso a paso
+- Endpoints: `/build_vm`, `/vm_configurations/{provider}`, `/validate_vm_config`
+
 ## Objetivos
-- Aplicar principios SOLID y el patrón Factory Method.
+- Aplicar principios SOLID y patrones creacionales (Factory Method, Abstract Factory, Builder).
+- Demostrar la combinación efectiva de múltiples patrones de diseño.
 - Permitir la integración de nuevos proveedores sin modificar el controlador central.
+- Proporcionar diferentes niveles de abstracción según las necesidades del usuario.
 - Registrar logs sin exponer información sensible.
 - Proveer una API REST stateless y compatible con JSON.
 

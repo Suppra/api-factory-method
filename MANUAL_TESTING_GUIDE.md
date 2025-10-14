@@ -1,10 +1,10 @@
-# Guía de Pruebas Manuales - API Multi-Cloud
+# Guía de Pruebas Manuales - API Multi-Cloud Completa
 
 ## Instrucciones Previas
 
 1. **Instalar dependencias:**
    ```bash
-   py -m pip install fastapi uvicorn httpx
+   py -m pip install fastapi uvicorn httpx pydantic
    ```
 
 2. **Ejecutar el servidor:**
@@ -15,6 +15,14 @@
 3. **Acceder a la documentación interactiva:**
    - Swagger UI: http://127.0.0.1:8000/docs
    - ReDoc: http://127.0.0.1:8000/redoc
+
+## Resumen de Patrones y Endpoints
+
+La API implementa **3 patrones creacionales** con diferentes niveles de abstracción:
+
+1. **Factory Method** → `/provision_vm` (Individual)
+2. **Abstract Factory** → `/provision_resource_family` (Familias)
+3. **Builder + Director** → `/build_vm` (Construcción guiada)
 
 ## Endpoint 1: Aprovisionamiento Individual (Factory Method)
 
@@ -228,29 +236,124 @@ Verifica que en las respuestas de familias:
 - La VM referencie los IDs de network y storage creados
 - El `provider` en la respuesta coincida con el solicitado
 
-## Comandos cURL Alternativos
+## Endpoint 3: Construcción Guiada (Builder + Director)
 
-Si prefieres usar línea de comandos:
+### URL: `POST /build_vm`
+
+El patrón Builder + Director simplifica la construcción de VMs definiendo tipos estándar con configuraciones automáticas por proveedor.
+
+#### Ejemplo AWS Memory Optimized:
+```json
+{
+  "vm_type": "memory_optimized",
+  "provider": "aws",
+  "region": "us-east-1"
+}
+```
+
+#### Ejemplo Azure Compute Optimized con personalización:
+```json
+{
+  "vm_type": "compute_optimized",
+  "provider": "azure", 
+  "region": "eastus",
+  "custom_vm_config": {
+    "key_pair_name": "production-key",
+    "disk_optimization": true
+  },
+  "custom_storage_config": {
+    "size_gb": 200,
+    "iops": 5000
+  }
+}
+```
+
+#### Ejemplo GCP Standard:
+```json
+{
+  "vm_type": "standard",
+  "provider": "gcp",
+  "region": "us-central1"
+}
+```
+
+### Tipos de VM Disponibles:
+- **standard**: Propósito general, configuración balanceada
+- **memory_optimized**: Optimizada para memoria, ideal para bases de datos
+- **compute_optimized**: Optimizada para CPU, ideal para procesamiento
+
+## Endpoint 4: Configuraciones Disponibles
+
+### URL: `GET /vm_configurations/{provider}`
+
+Obtiene todas las configuraciones disponibles para un proveedor específico.
+
+#### Ejemplo:
+```
+GET /vm_configurations/aws
+```
+
+## Endpoint 5: Validación de Configuración
+
+### URL: `POST /validate_vm_config`
+
+Valida una configuración antes de crear la VM, incluyendo estimación de costos.
+
+#### Ejemplo:
+```json
+POST /validate_vm_config?provider=aws&vm_type=memory_optimized&region=us-east-1&flavor=large
+```
+
+## Comandos cURL Completos
 
 ```bash
-# Familia AWS
-curl -X POST "http://127.0.0.1:8000/provision_resource_family" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "provider": "aws",
-    "vm_params": {"instance_type": "t2.micro", "region": "us-east-1", "ami": "ami-123"},
-    "network_params": {"vpcId": "vpc-123", "subnet": "subnet-456", "securityGroup": "sg-789"},
-    "storage_params": {"volumeType": "gp2", "sizeGB": 20, "encrypted": true}
-  }'
-
-# VM Individual Azure  
+# 1. VM Individual (Factory Method)
 curl -X POST "http://127.0.0.1:8000/provision_vm" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider": "azure",
-    "params": {"size": "Standard_B1s", "resource_group": "rg-1", "image": "ubuntu", "vnet": "vnet-1"}
+    "provider": "aws",
+    "params": {"instance_type": "t2.micro", "region": "us-east-1", "vpc": "vpc-123", "ami": "ami-123"}
   }'
 
-# Proveedores soportados
+# 2. Familia de Recursos (Abstract Factory)
+curl -X POST "http://127.0.0.1:8000/provision_resource_family" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "azure",
+    "vm_params": {"size": "Standard_B1s", "resource_group": "rg-1", "image": "ubuntu"},
+    "network_params": {"virtualNetwork": "vnet-1", "subnetName": "subnet-1", "networkSecurityGroup": "nsg-1"},
+    "storage_params": {"diskSku": "Standard_LRS", "sizeGB": 50, "managedDisk": true}
+  }'
+
+# 3. Construcción Guiada (Builder + Director)
+curl -X POST "http://127.0.0.1:8000/build_vm" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vm_type": "memory_optimized",
+    "provider": "gcp",
+    "region": "us-central1",
+    "custom_storage_config": {"size_gb": 100}
+  }'
+
+# 4. Configuraciones de Proveedor
+curl -X GET "http://127.0.0.1:8000/vm_configurations/onpremise"
+
+# 5. Validar Configuración
+curl -X POST "http://127.0.0.1:8000/validate_vm_config?provider=aws&vm_type=compute_optimized&region=us-east-1"
+
+# 6. Proveedores Soportados
 curl -X GET "http://127.0.0.1:8000/supported_providers"
 ```
+
+## Comparación de Patrones
+
+| Patrón | Endpoint | Nivel de Control | Complejidad | Uso Recomendado |
+|--------|----------|------------------|-------------|------------------|
+| **Factory Method** | `/provision_vm` | Total | Alto | Configuraciones específicas y detalladas |
+| **Abstract Factory** | `/provision_resource_family` | Medio | Medio | Familias consistentes de recursos |
+| **Builder + Director** | `/build_vm` | Automático + Personalizable | Bajo | Tipos estándar con personalización opcional |
+
+### Cuándo usar cada patrón:
+- **Factory Method**: Cuando necesitas control total sobre cada parámetro
+- **Abstract Factory**: Cuando necesitas garantizar consistencia entre recursos relacionados  
+- **Builder + Director**: Cuando quieres configuraciones automáticas con posibilidad de personalización
